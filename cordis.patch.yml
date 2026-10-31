@@ -1,8 +1,4 @@
-# dsh-soul-md — bundle patch layer
-#
-# Declares the plugin as a Cordis loader entry, making the package a standard
-# profile bundle: `dsh plugin --profile <p> add dsh-soul-md` installs and
-# mounts it without manual cordis.patch.yml edits.
+# Settings belong to the host profile; the agent preset that lists soul-md mounts the persona/tools.
 - insert:
     - id: soul-md
-      name: 'dsh-soul-md'
+      name: dsh-soul-md/settings

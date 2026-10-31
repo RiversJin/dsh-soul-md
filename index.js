@@ -42,7 +42,7 @@ import { skipsSubagentSections } from "./subagents.js";
 /** Cordis plugin name. */
 const name = "soul-md";
 /** Services this plugin needs injected from the host tree. */
-const inject = ["systemPrompt", "tools"];
+const inject = ["systemPrompt", "tools", "soulConfig"];
 /** Settings namespace owned by this plugin (Web UI settings section). */
 const NS = "soul-md";
 
@@ -77,6 +77,8 @@ const Config = z.object({
   memory: z.object({
     /** `memory_append` / `memory_rewrite` refuse to grow a file beyond this size (bytes). */
     maxBytes: z.number().default(1024 * 1024),
+    /** Preserve the deployment switch for the legacy memory tools. */
+    tools: z.boolean().default(true),
     /** Also render the memory file as a `soul:memory` system-prompt section. */
     inject: z.boolean().default(true),
     /** Opt-in progressive disclosure: core.md is injected; topics/*.md become an index. */
@@ -114,7 +116,7 @@ const Config = z.object({
 }).volatile();
 
 function apply(ctx, config) {
-  let sourceGetter = null;
+  const sourceGetter = () => ctx.get("soulConfig").get();
   /** mtime-keyed text cache for memory files; steady sections stay byte-identical. */
   const fileCache = new Map();
   /** Workspace canonical-path index (lowercased cwd -> canonical path from the registry). */
@@ -415,8 +417,7 @@ function apply(ctx, config) {
         scheduleWsRetry();
         return;
       }
-      const base = cfg();
-      await settings.update(NS, { ...base, workspaceList: list }).catch((error) => {
+      await settings.update(NS, { workspaceList: list }).catch((error) => {
         ctx.logger.warn(`[soul-md] workspace list write failed: ${String(error)}`);
       });
       wsRetryCount = 0;
@@ -467,6 +468,7 @@ function apply(ctx, config) {
   const byteLen = (text) => Buffer.byteLength(text, "utf8");
   const agentOf = (exec) => exec?.agent ?? null;
 
+  if (cfg().memory?.tools !== false) {
   ctx.tools.register(defineTool({
     name: "memory_append",
     description:
@@ -609,6 +611,8 @@ function apply(ctx, config) {
       return { bytes, scope: target.scope, topic: target.topic };
     },
   }));
+
+  }
 
   ctx.tools.register(defineTool({
     name: "soul_read",
